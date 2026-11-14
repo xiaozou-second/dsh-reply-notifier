@@ -1,0 +1,59 @@
+{
+  "name": "@xiaozou/reply-notifier",
+  "version": "1.0.0",
+  "description": "DeepSeek Harness bundle: reminds you when an agent reply finishes or when a permission prompt waits for your input",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-bundle",
+    "dsh-plugin",
+    "notification",
+    "reminder"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xiaozou-second/dsh-reply-notifier.git"
+  },
+  "homepage": "https://github.com/xiaozou-second/dsh-reply-notifier#readme",
+  "bugs": {
+    "url": "https://github.com/xiaozou-second/dsh-reply-notifier/issues"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node test/check.cjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-session"
+      ]
+    }
+  }
+}

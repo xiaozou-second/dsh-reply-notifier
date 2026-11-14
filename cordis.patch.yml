@@ -1,0 +1,11 @@
+- insert:
+    - id: reply-notifier
+      name: '@xiaozou/reply-notifier'
+      config:
+        notifyOnReply: true
+        notifyOnPrompt: true
+        systemNotification: true
+        toast: true
+        sound: true
+        onlyWhenAway: false
+        alertWhileViewing: false

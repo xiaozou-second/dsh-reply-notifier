@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Reply notifier",
+    "description": "When an agent reply finishes, or a permission prompt, plan review, or question waits for your input, a card appears in the window corner naming the session. A short tone and an operating-system notification, when the page is allowed to use them, are added only while you are away from that session; set alertWhileViewing to always add them. Reading status only: it never answers a prompt. Options live on the reply-notifier row in the profile's cordis.patch.yml; the plugin switch turns every reminder off.",
+    "detail": "docs/DETAIL.md"
+  }
+}
