@@ -12,7 +12,7 @@ In DeepSeek Harness, open **Plugins**, choose **Add plugin**, and enter the
 package name:
 
 ```
-@xiaozou/reply-notifier
+@xiaozou-wine/reply-notifier
 ```
 
 The bundle installs its own row and works with no further configuration. Turn
@@ -44,7 +44,7 @@ the keys you want to keep:
 
 ```yaml
 - id: reply-notifier
-  name: '@xiaozou/reply-notifier'
+  name: '@xiaozou-wine/reply-notifier'
   config:
     notifyOnReply: true
     notifyOnPrompt: true

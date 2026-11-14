@@ -8,7 +8,7 @@
  * stop as unread.
  */
 window.__ModuleLoader__.load({
-  id: '@xiaozou/reply-notifier',
+  id: '@xiaozou-wine/reply-notifier',
   factory(require) {
     const React = require('react')
     const h = React.createElement

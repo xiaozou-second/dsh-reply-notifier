@@ -1,6 +1,6 @@
 - insert:
     - id: reply-notifier
-      name: '@xiaozou/reply-notifier'
+      name: '@xiaozou-wine/reply-notifier'
       config:
         notifyOnReply: true
         notifyOnPrompt: true

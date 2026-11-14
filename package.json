@@ -1,5 +1,5 @@
 {
-  "name": "@xiaozou/reply-notifier",
+  "name": "@xiaozou-wine/reply-notifier",
   "version": "1.0.0",
   "description": "DeepSeek Harness bundle: reminds you when an agent reply finishes or when a permission prompt waits for your input",
   "license": "MIT",
