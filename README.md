@@ -47,12 +47,12 @@ working or drops the overlay entry without disturbing the rest of the UI.
   until clicked where the operating system supports it, and clicking it focuses
   the window and opens the session.
 - **Outside the window**, in DeepSeek Harness Desktop, the taskbar entry is
-  flagged when a turn ends or a prompt appears and the window is not in front,
-  and stays flagged until you bring it forward: the taskbar button flashes on
-  Windows, the dock borrows the X11 urgency hint on Linux. This works with
-  Windows notifications turned off, is skipped while you are looking at the
-  window, and needs no change to the Desktop shell. Turn it off with
-  `flashTaskbar`.
+  flagged when a turn ends or a prompt appears — the taskbar button flashes on
+  Windows, the dock borrows the X11 urgency hint on Linux. It is shown whether
+  or not the window is in front: behind, it keeps flashing until you bring the
+  window forward; in front, it flashes until you click or type (or for eight
+  seconds), so the first input acknowledges it. It needs no change to the
+  Desktop shell and is skipped when `flashTaskbar` is off.
 - A reminder clears itself when its prompt is answered, a new turn starts in
   its session, or the session leaves the list.
 
@@ -89,7 +89,7 @@ the keys you want to keep:
 | `systemNotification` | `true` | Raise an operating-system notification. |
 | `toast` | `true` | Show the in-window cards. |
 | `sound` | `true` | Play the plugin chime and keep system notifications silent; turn it off to silence both. |
-| `flashTaskbar` | `true` | Flag the taskbar entry while the window is not in front: a taskbar flash on Windows, the X11 urgency hint on Linux (needs `wmctrl`). |
+| `flashTaskbar` | `true` | Flash the taskbar button on every turn end and prompt, in front or behind; a click or keystroke stops it (Windows flash, X11 urgency hint on Linux, the latter only renders behind). |
 | `onlyWhenAway` | `false` | Show no reply reminder while you are at the window; prompts still reach you. |
 | `alertWhileViewing` | `false` | Chime and notify even while you watch the session. |
 | `dismissOnReturn` | `true` | Coming back to the window clears every reminder, and a click or keystroke clears the urgent ones; `false` keeps the older timings. |
@@ -129,9 +129,12 @@ Numeric values are clamped to sane ranges: `toastSeconds` and `idleSeconds` to
   `powershell.exe` that calls `FlashWindowEx` on the window of the Electron
   process that owns the harness, and Linux runs `wmctrl` to add
   `_NET_WM_STATE_DEMANDS_ATTENTION` to that window. Nothing is installed,
-  downloaded, or sent. A browser tab has no window to flag, Wayland sessions
-  have no portable urgency hint, and a machine that blocks the helper keeps the
-  chime, the title marker, and the notification.
+  downloaded, or sent. On Windows the helper runs until the window comes
+  forward, until you click or type (the only input another process can see,
+  read through `GetLastInputInfo`), or for eight seconds; one helper runs at a
+  time. A browser tab has no window to flag, Wayland sessions have no portable
+  urgency hint, and a machine that blocks the helper keeps the chime, the title
+  marker, and the notification.
 - A browser or desktop shell may throttle timers in a hidden or minimized
   window, so repeats can arrive later than `repeatSeconds`.
 - No sound or notification is stored, sent, or logged anywhere; the bundle makes

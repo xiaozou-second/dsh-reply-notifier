@@ -25,10 +25,16 @@ shell:
 - `approval/request` and `user-questions/request` listeners delegate to `next()`
   unchanged: the flash never answers or replaces the real answerer.
 - New option `flashTaskbar` (default `true`), Desktop only: a taskbar flash on
-  Windows, the X11 urgency hint on Linux. Linux runs `wmctrl -lp` to find the
-  window whose `_NET_WM_PID` is the Electron main process, then `wmctrl -i -b
-  add,demands_attention`; without `wmctrl`, or on Wayland, it disables itself
-  after one logged warning instead of failing every reminder.
+  Windows, the X11 urgency hint on Linux. Windows runs one hidden
+  `powershell.exe` that resolves the Electron window, flashes it every 600 ms
+  and stops when the window comes forward, when system-wide input arrives
+  900 ms after the start (`GetLastInputInfo`, the only input another process
+  can see), after eight seconds when the window started in front, or when the
+  window disappears (`IsWindow`); one helper runs at a time and `dispose()`
+  kills it. Linux runs `wmctrl -lp` to find the window whose `_NET_WM_PID` is
+  the Electron main process, then `wmctrl -i -b add,demands_attention`; without
+  `wmctrl`, or on Wayland, it disables itself after one logged warning instead
+  of failing every reminder.
 - Also shipped: `dismissOnReturn` (default `true`) — a click, alt-tab, or any
   input back in the window clears the reminders instead of waiting for
   `toastSeconds` or a manual close; while the window has the foreground no

@@ -912,15 +912,29 @@ async function taskbarFlash() {
     [true, true, false])
   const script = flashScript(4242)
   check('the flash script names the process it starts from', script.includes('$cursor = 4242'), true)
-  check('the flash script asks Windows to flash until focus', script.includes('FlashWindowEx') && script.includes('dwFlags = [uint32]15'), true)
-  check('the flash script leaves a foreground window alone', script.includes('GetForegroundWindow'), true)
+  check('the flash script flashes the window', script.includes('FlashWindowEx') && script.includes('dwFlags = [uint32]3'), true)
+  check('the flash script stops when the window comes forward', script.includes('GetForegroundWindow'), true)
+  check('the flash script stops on the next click or key', script.includes('GetLastInputInfo') && script.includes('900'), true)
+  check('the flash script stops when the window is gone', script.includes('IsWindow'), true)
   check('the flash script never falls through to the desktop', script.includes("'explorer'") && script.includes('break'), true)
   const args = powerShellArguments(4242)
   check('the flash payload is one encoded command', args.at(-2), '-EncodedCommand')
   check('the flash payload round-trips', Buffer.from(args.at(-1), 'base64').toString('utf16le'), script)
 
   const launches = []
-  const makeChild = () => ({ once() {}, unref() {} })
+  const children = []
+  const makeChild = () => {
+    const handlers = {}
+    const child = {
+      killed: false,
+      once: (event, handler) => { handlers[event] = handler },
+      unref() {},
+      kill() { child.killed = true; handlers.exit?.() },
+      finish() { handlers.exit?.() },
+    }
+    children.push(child)
+    return child
+  }
   const spawnStub = (file, argv, options) => { launches.push({ file, argv, options }); return makeChild() }
   let clock = 1000
   const build = (overrides) => createTaskbarFlash({
@@ -941,8 +955,11 @@ async function taskbarFlash() {
   check('the flash helper output is discarded', launches[0].options.stdio, 'ignore')
   check('one reminder inside the cooldown reuses the flash', channel.flash('prompt'), false)
   clock += FLASH_COOLDOWN_MS
-  check('a later reminder flashes again', channel.flash('prompt'), true)
+  check('a reminder while the helper still runs reuses the flash', channel.flash('prompt'), false)
+  children[0].finish()
+  check('a later reminder flashes again once the helper stops', channel.flash('prompt'), true)
   channel.dispose()
+  check('disposing stops a running helper', children[1].killed, true)
   clock += FLASH_COOLDOWN_MS
   check('a disposed channel flashes nothing', channel.flash('reply'), false)
   check('the disposed channel launched only twice', launches.length, 2)
