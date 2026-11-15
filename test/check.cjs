@@ -707,16 +707,15 @@ async function repeatAlerts() {
   await app.advance(5000)
   check('the reminder repeats twice', app.notifications.length, 3)
   await app.advance(60000)
-  check('the slow tail keeps nudging', app.notifications.length, 4)
-  await app.advance(60000)
-  check('the slow tail keeps nudging again', app.notifications.length, 5)
+  check('the chime stops after the repeat limit', app.notifications.length, 3)
+  check('the stopped repeat rings no more', app.tones(), 3)
 
   app.env.hidden = false
   await app.visibility(false)
   await app.advance(10000)
-  check('returning stops the repeats', app.notifications.length, 5)
+  check('returning keeps the notification count', app.notifications.length, 3)
   check('returning closes the reminder notification', app.notifications[0].closed, true)
-  check('returning closes the repeat notification', app.notifications[4].closed, true)
+  check('returning closes the repeat notification', app.notifications[2].closed, true)
   app.dispose()
 }
 
@@ -979,7 +978,7 @@ async function hostOptions() {
     toastSeconds: 20,
     idleSeconds: 90,
     repeatSeconds: 20,
-    repeatLimit: 12,
+    repeatLimit: 2,
   }
   const inject = (config) => {
     const table = []

@@ -182,7 +182,7 @@ window.__ModuleLoader__.load({
       toastSeconds: 20,
       idleSeconds: 90,
       repeatSeconds: 20,
-      repeatLimit: 12,
+      repeatLimit: 2,
     }
 
     function readConfig() {
@@ -659,11 +659,10 @@ window.__ModuleLoader__.load({
         if (!isAway() || urgentItems().length === 0) { stopRepeat(); return }
         if (config.repeatSeconds <= 0 || config.repeatLimit <= 0) return
         if (repeatTimer !== null) return
-        // Rapid nudges first, then a slow tail that keeps returning until acknowledged.
-        const delay = repeatCount < config.repeatLimit
-          ? config.repeatSeconds
-          : Math.max(60, config.repeatSeconds * 6)
-        repeatTimer = setTimeout(runRepeat, Math.round(delay * 1000))
+        // A few nudges at a fixed interval, then silence: the cards and the
+        // last notification stay until acknowledged, but nothing keeps ringing.
+        if (repeatCount >= config.repeatLimit) return
+        repeatTimer = setTimeout(runRepeat, Math.round(config.repeatSeconds * 1000))
       }
       const runRepeat = () => {
         repeatTimer = null

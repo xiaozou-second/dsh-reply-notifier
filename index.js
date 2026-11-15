@@ -21,7 +21,7 @@ const DEFAULTS = {
   toastSeconds: 20,
   idleSeconds: 90,
   repeatSeconds: 20,
-  repeatLimit: 12,
+  repeatLimit: 2,
 }
 
 /** Inclusive range of every numeric option, in its own unit. */
