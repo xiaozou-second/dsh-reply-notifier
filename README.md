@@ -48,11 +48,11 @@ working or drops the overlay entry without disturbing the rest of the UI.
   until clicked where the operating system supports it, and clicking it focuses
   the window and opens the session.
 - **The session list marks the session that waits for you**: after a turn ends, a
-  red dot sits in that session's row until the session runs again or a prompt
-  takes over — the open session is marked too, so the row tells you which
-  session is yours to answer. A waiting permission, plan review, or question
-  keeps the harness's own status dot and adds no red dot, and `notifyOnReply:
-  false` turns the red dot off.
+  red dot sits in that session's row until you open it, click in it, start its
+  next turn, or a prompt takes over — the open session is marked too, so the row
+  tells you which session is yours to answer. A waiting permission, plan review,
+  or question keeps the harness's own status dot and adds no red dot, and
+  `notifyOnReply: false` turns the red dot off.
 - **Outside the window**, in DeepSeek Harness Desktop, the taskbar entry is
   flagged when a turn ends or a prompt waits — in front or behind: the button
   blinks three times, about a second per blink, and behind another window the
@@ -61,8 +61,8 @@ working or drops the overlay entry without disturbing the rest of the UI.
   when `flashTaskbar` is off; with `onlyWhenAway` on, only a reminder the client
   counted as urgent flashes.
 - A reminder clears itself when its prompt is answered, a new turn starts in
-  its session, or the session leaves the list; the row dot follows the same
-  rules.
+  its session, or the session leaves the list; the row dot also clears as soon
+  as you open that session or click inside it.
 
 ## Options
 

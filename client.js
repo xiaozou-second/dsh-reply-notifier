@@ -1063,6 +1063,20 @@ window.__ModuleLoader__.load({
         const notifier = createNotifier()
         const sessions = ctx.sessions
         let center = null
+        const mainSessionId = () => {
+          const list = sessions.list.getSnapshot()
+          for (const id of Object.keys(list.byId)) {
+            if ((list.byId[id].retainedBy?.mainView ?? 0) > 0) return id
+          }
+          return undefined
+        }
+        // Opening a session is reading its reply: drop that row's dot.
+        let viewed = mainSessionId()
+        const syncViewed = () => {
+          const current = mainSessionId()
+          if (current !== undefined && current !== viewed) awaiting.clear(current)
+          viewed = current
+        }
 
         ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'reply-notifier: dictionaries')
         const t = ctx.locale.bind(NS)
@@ -1070,6 +1084,9 @@ window.__ModuleLoader__.load({
           if (center !== null) center.refreshChannels()
         }, (event) => {
           if (center !== null) center.acknowledge(event)
+          // A click or key in the window acknowledges the session on screen too.
+          const current = mainSessionId()
+          if (current !== undefined) awaiting.clear(current)
         })
         center = createReminderCenter({
           config, store, t, presence, chime, notifier, sessions,
@@ -1090,7 +1107,10 @@ window.__ModuleLoader__.load({
           }
         }, 'reply-notifier: audio unlock')
         ctx.effect(() => watchStatus(ctx, config, center, presence, awaiting), 'reply-notifier: session status')
-        ctx.effect(() => sessions.list.subscribe(() => center.refreshChannels()), 'reply-notifier: viewed session')
+        ctx.effect(() => sessions.list.subscribe(() => {
+          center.refreshChannels()
+          syncViewed()
+        }), 'reply-notifier: viewed session')
         ctx.effect(() => () => awaiting.dispose(), 'reply-notifier: reply dots')
 
         ctx.slots.inject('sidebar.session.row.trailing', () => ctx.slots.register({

@@ -37,11 +37,13 @@ shell:
   of failing every reminder.
 - The client half registers a red dot in ui-workspace's
   `sidebar.session.row.trailing` seat for every session whose turn ended and
-  whose next turn has not started. The dot clears when the session runs again,
-  when a prompt (`approval`, `plan-review`, `question`) takes over — the
-  harness's own status dot covers those — and when the session leaves the list.
-  It shows on the open session too, so the row names the session that waits for
-  the user; `notifyOnReply: false` turns it off.
+  whose next turn has not started. The dot clears as soon as you open that
+  session (`retainedBy.mainView`) or click inside the window while it is the
+  session on screen, when the session runs again, when a prompt (`approval`,
+  `plan-review`, `question`) takes over — the harness's own status dot covers
+  those — and when the session leaves the list. It shows on the open session
+  too, so the row names the session that waits for the user; `notifyOnReply:
+  false` turns it off.
 - Also shipped: `dismissOnReturn` (default `true`) — a click, alt-tab, or any
   input back in the window clears the reminders instead of waiting for
   `toastSeconds` or a manual close; while the window has the foreground no
@@ -147,7 +149,7 @@ notifications; it also makes the repeat reminders visible.
 
 ## Current state (handoff)
 
-- `public/client.js` (1118 lines): sticky urgent alerts portaled above panels;
+- `public/client.js` (1132 lines): sticky urgent alerts portaled above panels;
   3-round chime; 12 rapid repeats + 2-minute tail; `🔴 N ·` title marker; audio
   unlock; native notification with click-to-open; prompt/reply reconciliation;
   every reminder cleared by the next click back into the window; a red reply dot

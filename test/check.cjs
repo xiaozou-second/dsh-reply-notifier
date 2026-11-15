@@ -458,6 +458,7 @@ async function awaitingDots() {
   const app = boot({})
   app.summaries.s1 = { displayTitle: 'Session one', retainedBy: { mainView: 1 } }
   app.summaries.s2 = { displayTitle: 'Session two', retainedBy: {} }
+  await app.notifyList()
   await app.publish({ s1: idle, s2: idle })
   check('an idle session shows no reply dot', [app.dot('s1'), app.dot('s2')], [false, false])
 
@@ -468,8 +469,24 @@ async function awaitingDots() {
   check('a finished turn dots the open session too', [app.dot('s1'), app.dot('s2')], [true, true])
   check('the dot is labelled for screen readers', app.dotLabel('s1'), 'Waiting for your reply')
 
+  // Clicking a session row opens it: that session's dot goes away, others stay.
+  app.summaries.s1.retainedBy = {}
+  app.summaries.s2.retainedBy = { mainView: 1 }
+  await app.notifyList()
+  check('opening a session clears its dot', [app.dot('s1'), app.dot('s2')], [true, false])
+
+  // A turn that ends on the session you are watching still dots it until you click.
+  app.summaries.s1.retainedBy = { mainView: 1 }
+  app.summaries.s2.retainedBy = {}
+  await app.notifyList()
+  await app.publish({ s1: running })
+  await app.publish({ s1: stopped })
+  check('a finished turn dots the session on screen', app.dot('s1'), true)
+  await app.activity()
+  check('a click in the open session clears its dot', app.dot('s1'), false)
+
   await app.publish({ s1: running, s2: stopped })
-  check('the next turn clears that row dot', [app.dot('s1'), app.dot('s2')], [false, true])
+  check('the next turn clears that row dot', [app.dot('s1'), app.dot('s2')], [false, false])
 
   await app.publish({ s1: running, s2: approval('b1', 'bash') })
   check('a waiting prompt clears the reply dot', app.dot('s2'), false)
