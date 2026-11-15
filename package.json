@@ -1,6 +1,6 @@
 {
   "name": "@xiaozou-wine/reply-notifier",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "DeepSeek Harness bundle: persistent, repeating reminders when an agent reply finishes or a prompt waits for your input",
   "license": "MIT",
   "type": "module",

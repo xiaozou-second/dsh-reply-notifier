@@ -55,11 +55,11 @@ working or drops the overlay entry without disturbing the rest of the UI.
   false` turns the red dot off.
 - **Outside the window**, in DeepSeek Harness Desktop, the taskbar entry is
   flagged when a turn ends or a prompt waits — in front or behind: the button
-  blinks a few times and then keeps Windows' solid orange highlight until you
-  activate the window. Behind, the blink stops early as soon as the window comes
-  forward. The X11 urgency hint is used on Linux. It needs no change to the
-  Desktop shell and is skipped when `flashTaskbar` is off; with `onlyWhenAway`
-  on, only a reminder the client counted as urgent flashes.
+  blinks three times, about a second per blink, and behind another window the
+  orange highlight then stays until you activate the harness. The X11 urgency
+  hint is used on Linux. It needs no change to the Desktop shell and is skipped
+  when `flashTaskbar` is off; with `onlyWhenAway` on, only a reminder the client
+  counted as urgent flashes.
 - A reminder clears itself when its prompt is answered, a new turn starts in
   its session, or the session leaves the list; the row dot follows the same
   rules.
@@ -97,7 +97,7 @@ the keys you want to keep:
 | `systemNotification` | `true` | Raise an operating-system notification. |
 | `toast` | `true` | Show the in-window cards. |
 | `sound` | `true` | Play the plugin chime and keep system notifications silent; turn it off to silence both. |
-| `flashTaskbar` | `true` | Blink the taskbar entry when a turn ends or a prompt waits, in front or behind; the few blinks leave Windows' solid orange highlight until activation (the X11 urgency hint on Linux renders only behind). |
+| `flashTaskbar` | `true` | Blink the taskbar entry when a turn ends or a prompt waits, in front or behind; behind another window the orange highlight stays until activation (the X11 urgency hint on Linux renders only behind). |
 | `onlyWhenAway` | `false` | Show no reply reminder while you are at the window; prompts still reach you, and the taskbar blink now waits for the client's urgent marker. |
 | `alertWhileViewing` | `false` | Chime and notify even while you watch the session. |
 | `dismissOnReturn` | `true` | Clear every reminder as soon as you come back to the window or press anything in it; `false` keeps the older timings. |
@@ -137,10 +137,11 @@ Numeric values are clamped to sane ranges: `toastSeconds` and `idleSeconds` to
   platforms go through a helper process: Windows starts a hidden
   `powershell.exe` that calls `FlashWindowEx` on the window of the Electron
   process that owns the harness, and Linux runs `wmctrl` to add
-  `_NET_WM_STATE_DEMANDS_ATTENTION` to that window. The Windows helper blinks
-  six times (600 ms apart), sends `FLASHW_STOP`, and leaves the taskbar button
-  highlighted until activation; only `onlyWhenAway` makes it wait for the red
-  urgent title count. Nothing is installed, downloaded, or sent over the
+  `_NET_WM_STATE_DEMANDS_ATTENTION` to that window. The Windows helper asks the
+  shell for three blinks in one `FlashWindowEx` call; each blink paints the
+  taskbar button for about a second, and behind another window the orange
+  highlight then stays until activation. Only `onlyWhenAway` makes it wait for
+  the red urgent title count. Nothing is installed, downloaded, or sent over the
   network. A browser tab has no window to flag, Wayland sessions have no
   portable urgency hint, and a machine that blocks the helper keeps the chime,
   the title marker, the row dot, and the notification.

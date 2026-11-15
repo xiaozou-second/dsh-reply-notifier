@@ -15,12 +15,10 @@ shell:
   approval/question, it starts one hidden `powershell.exe` that resolves the
   window of the Electron process owning the harness
   (`GetProcessById(ppid).MainWindowHandle`, walking up to four ancestors), then
-  calls `FlashWindowEx` with `FLASHW_ALL` six times, 600 ms apart. A window that
-  starts behind stops early once it is activated; a window that already has the
-  focus blinks too, because the user asked for the same cue in both states.
-  `FLASHW_STOP` with `uCount = 0` ends the burst; Windows keeps the taskbar
-  button's solid orange highlight until the window is activated, which clears
-  it.
+  makes one `FlashWindowEx` call with `FLASHW_ALL` and `uCount = 3`: the shell
+  paints three blinks of about a second each, in front or behind, and behind
+  another window it leaves the orange attention highlight until activation.
+  The helper itself never loops and never stops the sequence.
 - With `onlyWhenAway` on, the helper first waits up to 3 s for the client's red
   urgent title marker (`🔴`) and exits without a blink when it is absent, so a
   reminder the client suppressed stays quiet. The marker gate is off by default:
@@ -57,11 +55,13 @@ shell:
   stubbed `wmctrl`.
 
 Verified on this machine: the generated payload resolves the DSH window from a
-process inside the harness tree in about 150 ms and the P/Invoke calls
-`FlashWindowEx` on the live window (`ok=True`, foreground left untouched); the
-six-pulse burst runs about 3 s and exits `0`. The host half reloads with the
-plugin module; a full desktop restart is still the fallback when the loader
-keeps a cached generation.
+process inside the harness tree in about 150 ms, and one `FlashWindowEx` call
+with `uCount = 3` measured on the live taskbar gives three ~0.9 s orange blinks
+about 1.1 s apart; with the window behind another application the orange
+highlight is still lit several seconds later, and with the window in front it
+clears after the last blink. The helper exits in under a second; the shell owns
+the sequence. The host half reloads with the plugin module; a full desktop
+restart is still the fallback when the loader keeps a cached generation.
 
 ## Facts verified in this environment
 
@@ -154,13 +154,14 @@ notifications; it also makes the repeat reminders visible.
   in ui-workspace's `sidebar.session.row.trailing` seat while a session waits
   for the next turn.
 - `public/index.js` (128 lines): normalized options, page bootstrap, and the
-  taskbar-blink watcher; `public/lib/taskbar-flash.js` (287 lines) builds the
+  taskbar-blink watcher; `public/lib/taskbar-flash.js` (277 lines) builds the
   PowerShell payload and the `wmctrl` calls.
-- `public/test/check.cjs` (1217 lines): all checks passing on a fake clock, no
+- `public/test/check.cjs` (1223 lines): all checks passing on a fake clock, no
   child process spawned.
 - Windows `ToastEnabled=0` verified; the taskbar blink is verified against hwnd
-  459394: the helper resolves the window in ~150 ms, pulses six times, and exits
-  `0` in ~3 s.
+  459394: one `uCount = 3` call paints three ~0.9 s blinks, and the orange
+  highlight stays lit while the window is behind. The helper exits in under a
+  second.
 - The host half loads with a plugin module reload; when the loader keeps a
   cached generation, the harness needs one restart to load the new `index.js`.
   The client half hot-swaps as usual.
