@@ -263,7 +263,7 @@ function boot(options, environment) {
     component: registration.component,
     render: () => registration.component({ ...injected, t: dictionaryT }),
     advance: async (ms) => { advanceClock(ms); await settle() },
-    activity: async () => { doc.dispatch('pointerdown'); await settle() },
+    activity: async (target) => { doc.dispatch('pointerdown', target === undefined ? {} : { target }); await settle() },
     focus: async (value = true) => { env.focused = value; win.dispatch(value ? 'focus' : 'blur'); await settle() },
     visibility: async (hidden) => { env.hidden = hidden; doc.dispatch('visibilitychange'); await settle() },
     dispose: () => {
@@ -669,9 +669,10 @@ async function autoDismissAndHold() {
   await app.advance(10000)
   check('a card the user never touched stays', app.toasts().length, 1)
 
-  await app.activity()
+  // Window focus counts as presence without acknowledging: the lifetime runs.
+  await app.focus(true)
   await app.advance(5000)
-  check('a card clears after viewing and input', app.toasts().length, 0)
+  check('a card clears after viewing without input', app.toasts().length, 0)
   app.dispose()
 
   const held = boot({ toastSeconds: 5 })
@@ -680,7 +681,7 @@ async function autoDismissAndHold() {
   await held.publish({ s1: running })
   await held.publish({ s1: stopped })
   await held.advance(1000)
-  await held.activity()
+  await held.focus(true)
   held.injected.hold(held.toasts()[0].id)
   held.injected.hold(held.toasts()[0].id)
   await held.advance(10000)
@@ -823,12 +824,16 @@ async function acknowledgeOnInput() {
   await quiet.publish({ s1: running })
   await quiet.publish({ s1: stopped })
   check('a watched reply is a quiet corner card', quiet.toasts().map(item => item.urgent), [false])
+  await quiet.activity({ closest: () => ({}) })
+  check('a press inside a card leaves it to the card', quiet.toasts().length, 1)
   await quiet.activity()
-  check('a click leaves a quiet card on its own lifetime', quiet.toasts().length, 1)
+  check('a click in the window clears a quiet card too', quiet.toasts().length, 0)
 
+  await quiet.publish({ s1: running })
+  await quiet.publish({ s1: stopped })
   quiet.env.focused = false
   await quiet.focus(false)
-  check('leaving moves the same card to the top', hasClass(quiet.render(), 'dsh-reply-notifier-alerts'), true)
+  check('leaving moves the card to the top', hasClass(quiet.render(), 'dsh-reply-notifier-alerts'), true)
   await quiet.activity()
   check('an input while away keeps the away reminder', quiet.toasts().length, 1)
 

@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Reply notifier",
-    "description": "When an agent reply finishes, or a permission prompt, plan review, or question waits for your input, a reminder names the session and can open it. While you watch it is a corner card; when you are away (hidden, unfocused, or idle) it is a top alert with a persistent system notification and a repeating chime. Coming back to the window clears it, and while the window is in front a click or keystroke clears the urgent ones — the top seat is never used there. In DeepSeek Harness Desktop the taskbar entry also flashes, in front or behind: a click or keystroke stops it, and behind it keeps flashing until you bring the window forward. Reading status only: it never answers a prompt. Options live on the reply-notifier row in the profile's cordis.patch.yml; the plugin switch turns every reminder off.",
+    "description": "When an agent reply finishes, or a permission prompt, plan review, or question waits for your input, a reminder names the session and can open it. While you watch it is a corner card; when you are away (hidden, unfocused, or idle) it is a top alert with a persistent system notification and a repeating chime. Coming back to the window clears it, and any click or keystroke in the window clears every reminder at once — the top seat is never used while the window is in front. In DeepSeek Harness Desktop the taskbar entry also flashes, in front or behind: a click or keystroke stops it, and behind it keeps flashing until you bring the window forward. Reading status only: it never answers a prompt. Options live on the reply-notifier row in the profile's cordis.patch.yml; the plugin switch turns every reminder off.",
     "detail": "docs/DETAIL.md"
   }
 }

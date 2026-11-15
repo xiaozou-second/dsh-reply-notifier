@@ -33,11 +33,12 @@ working or drops the overlay entry without disturbing the rest of the UI.
   session** button, and they render above fullscreen panels and the sidebar
   drawer. They stay while you are away and clear the moment you come back to the
   window — a click, an alt-tab, or any input. While you are at the window they
-  never take the top seat: they join the corner stack, and your next click or
+  never take the top seat: they join the corner stack, where the same click or
   keystroke clears them.
 - **Ambient reminders** appear as a card in the bottom-right corner while you
-  watch the session that finished. They clear after `toastSeconds` once you
-  keep interacting with the app; hovering or focusing the card holds it.
+  watch the session that finished. Left alone they clear after `toastSeconds`;
+  hovering or focusing the card holds that timer, and any click or keystroke in
+  the window clears every reminder on screen at once.
 - **Away from the keyboard**, urgent reminders repeat a louder three-strike
   chime and a persistent operating-system notification every `repeatSeconds`
   for `repeatLimit` times, then keep returning at a slower interval (six times
@@ -92,7 +93,7 @@ the keys you want to keep:
 | `flashTaskbar` | `true` | Flash the taskbar button on every turn end and prompt, in front or behind; a click or keystroke stops it (Windows flash, X11 urgency hint on Linux, the latter only renders behind). |
 | `onlyWhenAway` | `false` | Show no reply reminder while you are at the window; prompts still reach you. |
 | `alertWhileViewing` | `false` | Chime and notify even while you watch the session. |
-| `dismissOnReturn` | `true` | Coming back to the window clears every reminder, and a click or keystroke clears the urgent ones; `false` keeps the older timings. |
+| `dismissOnReturn` | `true` | Clear every reminder as soon as you come back to the window or press anything in it; `false` keeps the older timings. |
 | `requireInteraction` | `true` | Keep the system notification until it is clicked or dismissed. |
 | `toastSeconds` | `20` | Seconds a card stays after your next input once you are present; `0` keeps every card until dismissed. |
 | `idleSeconds` | `90` | Seconds without keyboard, pointer, wheel, or mouse input before you count as away; `0` disables idle detection. |

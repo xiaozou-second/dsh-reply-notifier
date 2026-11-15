@@ -319,9 +319,9 @@ window.__ModuleLoader__.load({
       }
       const activity = () => { wake(); notify() }
       // A real click, key, wheel, or touch is also an acknowledgement.
-      const input = () => {
+      const input = (event) => {
         wake()
-        if (typeof onInput === 'function' && !disposed) onInput()
+        if (typeof onInput === 'function' && !disposed) onInput(event)
         notify()
       }
       // A pointer may read without clicking; a quiet mouse still proves presence.
@@ -710,14 +710,13 @@ window.__ModuleLoader__.load({
         refreshAutoDismiss()
       }
 
-      /** A click, key, wheel, or touch drops the reminders that would otherwise wait for one. */
-      const acknowledge = () => {
+      /** A click, key, wheel, or touch anywhere in the window drops every reminder. */
+      const acknowledge = (event) => {
         if (disposed || !config.dismissOnReturn || isAway()) return
-        const waiting = items().filter(item => item.urgent)
-        if (waiting.length === 0) return
-        store.removeWhere(item => item.urgent)
-        for (const item of waiting) forget(item.id)
-        refreshChannels()
+        // A press inside a card belongs to that card: open, dismiss, hover.
+        const target = event?.target
+        if (typeof target?.closest === 'function' && target.closest('.dsh-reply-notifier-alert, .dsh-reply-notifier-card') !== null) return
+        clearAll()
       }
 
       const report = (request) => {
@@ -995,8 +994,8 @@ window.__ModuleLoader__.load({
         const t = ctx.locale.bind(NS)
         const presence = createPresence(config, () => {
           if (center !== null) center.refreshChannels()
-        }, () => {
-          if (center !== null) center.acknowledge()
+        }, (event) => {
+          if (center !== null) center.acknowledge(event)
         })
         center = createReminderCenter({
           config, store, t, presence, chime, notifier, sessions,

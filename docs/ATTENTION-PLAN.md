@@ -38,8 +38,9 @@ shell:
 - Also shipped: `dismissOnReturn` (default `true`) — a click, alt-tab, or any
   input back in the window clears the reminders instead of waiting for
   `toastSeconds` or a manual close; while the window has the foreground no
-  reminder takes the top seat, urgent ones join the corner stack and the next
-  click or keystroke drops them.
+  reminder takes the top seat, every reminder joins the corner stack, and the
+  next click or keystroke drops all of them (a press inside a card stays with
+  that card, so its open and close buttons still work).
 - `test/check.cjs`: 217 checks green, including the generated payload round
   trip, the cooldown, every off switch, the delegation of both waterfall
   events, dismissal on return and on input, the present/away seat, and the X11
