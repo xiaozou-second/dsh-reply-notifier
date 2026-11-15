@@ -48,12 +48,13 @@ working or drops the overlay entry without disturbing the rest of the UI.
   until clicked where the operating system supports it, and clicking it focuses
   the window and opens the session.
 - **Outside the window**, in DeepSeek Harness Desktop, the taskbar entry is
-  flagged when a turn ends or a prompt appears — the taskbar button flashes on
-  Windows, the dock borrows the X11 urgency hint on Linux. It is shown whether
-  or not the window is in front: behind, it keeps flashing until you bring the
-  window forward; in front, it flashes until you click or type (or for eight
-  seconds), so the first input acknowledges it. It needs no change to the
-  Desktop shell and is skipped when `flashTaskbar` is off.
+  flagged while an urgent reminder waits — the client's red title marker is the
+  gate, so a quiet reminder never flashes. On Windows the taskbar pulses for up
+  to 6 seconds behind the window and then keeps Windows' solid orange
+  highlight until you activate the window; clicking stops the pulse at once.
+  The pulse never starts while the window already has focus. The X11 urgency
+  hint is used on Linux. It needs no change to the Desktop shell and is skipped
+  when `flashTaskbar` is off.
 - A reminder clears itself when its prompt is answered, a new turn starts in
   its session, or the session leaves the list.
 
@@ -90,7 +91,7 @@ the keys you want to keep:
 | `systemNotification` | `true` | Raise an operating-system notification. |
 | `toast` | `true` | Show the in-window cards. |
 | `sound` | `true` | Play the plugin chime and keep system notifications silent; turn it off to silence both. |
-| `flashTaskbar` | `true` | Flash the taskbar button on every turn end and prompt, in front or behind; a click or keystroke stops it (Windows flash, X11 urgency hint on Linux, the latter only renders behind). |
+| `flashTaskbar` | `true` | Pulse the taskbar while an urgent reminder waits; the 6s pulse then leaves Windows' solid orange highlight until activation, and a click stops it (the X11 urgency hint on Linux renders only behind). |
 | `onlyWhenAway` | `false` | Show no reply reminder while you are at the window; prompts still reach you. |
 | `alertWhileViewing` | `false` | Chime and notify even while you watch the session. |
 | `dismissOnReturn` | `true` | Clear every reminder as soon as you come back to the window or press anything in it; `false` keeps the older timings. |
@@ -129,13 +130,14 @@ Numeric values are clamped to sane ranges: `toastSeconds` and `idleSeconds` to
   platforms go through a helper process: Windows starts a hidden
   `powershell.exe` that calls `FlashWindowEx` on the window of the Electron
   process that owns the harness, and Linux runs `wmctrl` to add
-  `_NET_WM_STATE_DEMANDS_ATTENTION` to that window. Nothing is installed,
-  downloaded, or sent. On Windows the helper runs until the window comes
-  forward, until you click or type (the only input another process can see,
-  read through `GetLastInputInfo`), or for eight seconds; one helper runs at a
-  time. A browser tab has no window to flag, Wayland sessions have no portable
-  urgency hint, and a machine that blocks the helper keeps the chime, the title
-  marker, and the notification.
+  `_NET_WM_STATE_DEMANDS_ATTENTION` to that window. The Windows helper pulses
+  for six seconds, sends `FLASHW_STOP`, and leaves the taskbar button
+  highlighted until activation; it starts only when the window title carries
+  the red urgent count, and never while the window already has focus. Nothing
+  is installed, downloaded, or sent over the network. A browser tab has no
+  window to flag, Wayland sessions have no portable urgency hint, and a
+  machine that blocks the helper keeps the chime, the title marker, and the
+  notification.
 - A browser or desktop shell may throttle timers in a hidden or minimized
   window, so repeats can arrive later than `repeatSeconds`.
 - No sound or notification is stored, sent, or logged anywhere; the bundle makes
@@ -151,8 +153,9 @@ runs the browser half against stub services on a fake clock and asserts 200+
 transitions: reply completion, prompt arrival and replacement, urgency and idle
 detection, dismissal the moment you come back, sticky and escalating cards, the
 repeat burst and its slow tail, notification clicks, session opening, prompt and
-reply reconciliation, the taskbar flag on every turn ending and every option for
-both Windows and X11, and the host's option normalisation. No browser is needed.
+reply reconciliation, the taskbar flag gated by the urgent title and every
+option for both Windows and X11, and the host's option normalisation. No
+browser is needed.
 
 | Path | Role |
 |---|---|

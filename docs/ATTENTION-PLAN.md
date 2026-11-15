@@ -14,24 +14,29 @@ shell:
 - `lib/taskbar-flash.js` — host half. On a `turn/end` or a waiting
   approval/question, it starts one hidden `powershell.exe` that resolves the
   window of the Electron process owning the harness
-  (`GetProcessById(ppid).MainWindowHandle`, walking up to four ancestors) and
-  calls `FlashWindowEx` with `FLASHW_ALL | FLASHW_TIMERNOFG` (`15`), so the
-  button flashes until the window comes forward.
+  (`GetProcessById(ppid).MainWindowHandle`, walking up to four ancestors). The
+  helper waits up to 3 s for the client's red urgent title marker (`🔴`), skips
+  the window when it already owns the foreground, then calls `FlashWindowEx`
+  with `FLASHW_ALL` every 600 ms for at most 6 s. It checks
+  `GetForegroundWindow` before every pulse, so clicking the window stops the
+  pulse within one interval. `FLASHW_STOP` with `uCount = 0` ends the pulse;
+  Windows keeps the taskbar button's solid orange highlight until the window is
+  activated, which clears it.
 - The window is skipped when it already owns the foreground
   (`GetForegroundWindow`), so a user looking at the harness never sees a flash.
 - The helper is skipped for `aborted`, `interrupted`, and `forked` turn endings,
-  for subagent sessions, when `notifyOnReply`/`notifyOnPrompt` are off, and it
-  runs once per 2.5 s (`FLASH_COOLDOWN_MS`).
+  for subagent and fork sessions (`session.header.origin` /
+  `session.header.parentSession`), when `notifyOnReply`/`notifyOnPrompt` are
+  off, and it runs once per 2.5 s (`FLASH_COOLDOWN_MS`).
 - `approval/request` and `user-questions/request` listeners delegate to `next()`
   unchanged: the flash never answers or replaces the real answerer.
-- New option `flashTaskbar` (default `true`), Desktop only: a taskbar flash on
+- New option `flashTaskbar` (default `true`), Desktop only: a taskbar pulse on
   Windows, the X11 urgency hint on Linux. Windows runs one hidden
-  `powershell.exe` that resolves the Electron window, flashes it every 600 ms
-  and stops when the window comes forward, when system-wide input arrives
-  900 ms after the start (`GetLastInputInfo`, the only input another process
-  can see), after eight seconds when the window started in front, or when the
-  window disappears (`IsWindow`); one helper runs at a time and `dispose()`
-  kills it. Linux runs `wmctrl -lp` to find the window whose `_NET_WM_PID` is
+  `powershell.exe` that resolves the Electron window and pulses it for at most
+  six seconds, skipping a window that already has focus; the stop leaves the
+  Windows orange highlight until activation. The helper never waits after the
+  pulse and never restarts while the window is in front. Linux runs
+  `wmctrl -lp` to find the window whose `_NET_WM_PID` is
   the Electron main process, then `wmctrl -i -b add,demands_attention`; without
   `wmctrl`, or on Wayland, it disables itself after one logged warning instead
   of failing every reminder.
@@ -41,15 +46,16 @@ shell:
   reminder takes the top seat, every reminder joins the corner stack, and the
   next click or keystroke drops all of them (a press inside a card stays with
   that card, so its open and close buttons still work).
-- `test/check.cjs`: 217 checks green, including the generated payload round
+- `test/check.cjs`: 226 checks green, including the generated payload round
   trip, the cooldown, every off switch, the delegation of both waterfall
   events, dismissal on return and on input, the present/away seat, and the X11
   flag through a stubbed `wmctrl`.
 
-Verified on this machine: the payload exits `0` in 277 ms, resolves the DSH
-window (hwnd 786454) from a process inside the harness tree, and reports
-`foreground=False` when the window is not in front. A flash launched from a
-child of the host process was observed to reach the same window.
+Verified on this machine: the payload resolves the DSH window from a process
+inside the harness tree, the P/Invoke reads the live window title, and the
+no-marker path exits `0` in about 3.5 s without touching the taskbar. The
+marker path pulses for six seconds and sends `FLASHW_STOP`. The host half has
+to be restarted to load changes; the client half hot-swaps.
 
 ## Facts verified in this environment
 

@@ -92,7 +92,10 @@ export function watchAttention(ctx, options, attention) {
   if (!attention.enabled) return () => {}
   const offTurn = ctx.on('session/event', (session, event) => {
     if (!options.notifyOnReply || event?.type !== 'turn/end') return
-    if (session?.origin === 'subagent') return
+    const header = session?.header
+    if (session?.origin === 'subagent' || header?.origin === 'subagent') return
+    if (session?.parentSession !== undefined || header?.parentSession !== undefined) return
+    if (session?.parentSessionId !== undefined || header?.parentSessionId !== undefined) return
     if (QUIET_TURN_ENDS.has(event?.data?.reason?.kind)) return
     attention.flash('reply')
   })
