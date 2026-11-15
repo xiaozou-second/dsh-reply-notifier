@@ -6,56 +6,62 @@ When an agent finishes, or a prompt waits, and the DSH window is not focused,
 signal the user on Windows: a flashing taskbar button, a red taskbar badge, or a
 native desktop notification. The in-window card is only the return path.
 
-## What shipped (v1.2.0, plugin-only)
+## What shipped (v1.5.0, plugin-only)
 
-The bundle now flashes the DSH taskbar button without touching the installed
+The bundle now blinks the DSH taskbar button without touching the installed
 shell:
 
 - `lib/taskbar-flash.js` — host half. On a `turn/end` or a waiting
   approval/question, it starts one hidden `powershell.exe` that resolves the
   window of the Electron process owning the harness
-  (`GetProcessById(ppid).MainWindowHandle`, walking up to four ancestors). The
-  helper waits up to 3 s for the client's red urgent title marker (`🔴`), skips
-  the window when it already owns the foreground, then calls `FlashWindowEx`
-  with `FLASHW_ALL` every 600 ms for at most 6 s. It checks
-  `GetForegroundWindow` before every pulse, so clicking the window stops the
-  pulse within one interval. `FLASHW_STOP` with `uCount = 0` ends the pulse;
-  Windows keeps the taskbar button's solid orange highlight until the window is
-  activated, which clears it.
-- The window is skipped when it already owns the foreground
-  (`GetForegroundWindow`), so a user looking at the harness never sees a flash.
+  (`GetProcessById(ppid).MainWindowHandle`, walking up to four ancestors), then
+  calls `FlashWindowEx` with `FLASHW_ALL` six times, 600 ms apart. A window that
+  starts behind stops early once it is activated; a window that already has the
+  focus blinks too, because the user asked for the same cue in both states.
+  `FLASHW_STOP` with `uCount = 0` ends the burst; Windows keeps the taskbar
+  button's solid orange highlight until the window is activated, which clears
+  it.
+- With `onlyWhenAway` on, the helper first waits up to 3 s for the client's red
+  urgent title marker (`🔴`) and exits without a blink when it is absent, so a
+  reminder the client suppressed stays quiet. The marker gate is off by default:
+  the host's own turn and prompt filters decide the rest.
 - The helper is skipped for `aborted`, `interrupted`, and `forked` turn endings,
   for subagent and fork sessions (`session.header.origin` /
   `session.header.parentSession`), when `notifyOnReply`/`notifyOnPrompt` are
   off, and it runs once per 2.5 s (`FLASH_COOLDOWN_MS`).
 - `approval/request` and `user-questions/request` listeners delegate to `next()`
   unchanged: the flash never answers or replaces the real answerer.
-- New option `flashTaskbar` (default `true`), Desktop only: a taskbar pulse on
-  Windows, the X11 urgency hint on Linux. Windows runs one hidden
-  `powershell.exe` that resolves the Electron window and pulses it for at most
-  six seconds, skipping a window that already has focus; the stop leaves the
-  Windows orange highlight until activation. The helper never waits after the
-  pulse and never restarts while the window is in front. Linux runs
+- New option `flashTaskbar` (default `true`), Desktop only: a taskbar blink on
+  Windows, the X11 urgency hint on Linux. Linux runs
   `wmctrl -lp` to find the window whose `_NET_WM_PID` is
   the Electron main process, then `wmctrl -i -b add,demands_attention`; without
   `wmctrl`, or on Wayland, it disables itself after one logged warning instead
   of failing every reminder.
+- The client half registers a red dot in ui-workspace's
+  `sidebar.session.row.trailing` seat for every session whose turn ended and
+  whose next turn has not started. The dot clears when the session runs again,
+  when a prompt (`approval`, `plan-review`, `question`) takes over — the
+  harness's own status dot covers those — and when the session leaves the list.
+  It shows on the open session too, so the row names the session that waits for
+  the user; `notifyOnReply: false` turns it off.
 - Also shipped: `dismissOnReturn` (default `true`) — a click, alt-tab, or any
   input back in the window clears the reminders instead of waiting for
   `toastSeconds` or a manual close; while the window has the foreground no
   reminder takes the top seat, every reminder joins the corner stack, and the
   next click or keystroke drops all of them (a press inside a card stays with
   that card, so its open and close buttons still work).
-- `test/check.cjs`: 226 checks green, including the generated payload round
+- `test/check.cjs`: every check green, including the generated payload round
   trip, the cooldown, every off switch, the delegation of both waterfall
-  events, dismissal on return and on input, the present/away seat, and the X11
-  flag through a stubbed `wmctrl`.
+  events, the `onlyWhenAway` marker gate, the row dot transitions, dismissal on
+  return and on input, the present/away seat, and the X11 flag through a
+  stubbed `wmctrl`.
 
-Verified on this machine: the payload resolves the DSH window from a process
-inside the harness tree, the P/Invoke reads the live window title, and the
-no-marker path exits `0` in about 3.5 s without touching the taskbar. The
-marker path pulses for six seconds and sends `FLASHW_STOP`. The host half has
-to be restarted to load changes; the client half hot-swaps.
+Verified on this machine: the generated payload resolves the DSH window from a
+process inside the harness tree in about 150 ms and the P/Invoke calls
+`FlashWindowEx` on the live window (`ok=True`, foreground left untouched); the
+six-pulse burst runs about 3 s and exits `0`. The host half reloads with the
+plugin module; a full desktop restart is still the fallback when the loader
+keeps a cached generation.
 
 ## Facts verified in this environment
 
@@ -141,24 +147,29 @@ notifications; it also makes the repeat reminders visible.
 
 ## Current state (handoff)
 
-- `public/client.js` (1033 lines): sticky urgent alerts portaled above panels;
+- `public/client.js` (1118 lines): sticky urgent alerts portaled above panels;
   3-round chime; 12 rapid repeats + 2-minute tail; `🔴 N ·` title marker; audio
   unlock; native notification with click-to-open; prompt/reply reconciliation;
-  every reminder cleared by the next click back into the window.
-- `public/index.js` (125 lines): normalized options, page bootstrap, and the
-  taskbar-flash watcher; `public/lib/taskbar-flash.js` (229 lines) builds the
+  every reminder cleared by the next click back into the window; a red reply dot
+  in ui-workspace's `sidebar.session.row.trailing` seat while a session waits
+  for the next turn.
+- `public/index.js` (128 lines): normalized options, page bootstrap, and the
+  taskbar-blink watcher; `public/lib/taskbar-flash.js` (287 lines) builds the
   PowerShell payload and the `wmctrl` calls.
-- `public/test/check.cjs` (1116 lines): 217 checks passing on a fake clock, no
+- `public/test/check.cjs` (1217 lines): all checks passing on a fake clock, no
   child process spawned.
-- Windows `ToastEnabled=0` verified; taskbar flash verified manually against
-  hwnd 786454.
-- The host half changed, so the harness needs one restart to load the new
-  `index.js`; the client half hot-swaps as usual.
+- Windows `ToastEnabled=0` verified; the taskbar blink is verified against hwnd
+  459394: the helper resolves the window in ~150 ms, pulses six times, and exits
+  `0` in ~3 s.
+- The host half loads with a plugin module reload; when the loader keeps a
+  cached generation, the harness needs one restart to load the new `index.js`.
+  The client half hot-swaps as usual.
 
 ## Next-session prompt
 
-> The plugin-only taskbar flash is shipped and verified. If a red taskbar badge
-> is still wanted, implement Option A from `public/docs/ATTENTION-PLAN.md`:
-> patch `lib/main.js` and `lib/preload-app.cjs` in a copy of `app.asar`, feature
-> detect `dshDesktop.attention` in `client.js`, and keep a restore script plus
-> instructions for re-applying the patch after each DSH update.
+> The plugin-only taskbar blink and the session-row reply dot are shipped. If a
+> red taskbar badge is still wanted, implement Option A from
+> `public/docs/ATTENTION-PLAN.md`: patch `lib/main.js` and `lib/preload-app.cjs`
+> in a copy of `app.asar`, feature detect `dshDesktop.attention` in
+> `client.js`, and keep a restore script plus instructions for re-applying the
+> patch after each DSH update.

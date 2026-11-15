@@ -1,4 +1,4 @@
-/** Host half: publishes the reminder options to the browser half and flashes the
+/** Host half: publishes the reminder options to the browser half and blinks the
  * Desktop taskbar button, which stays visible while Windows notifications are off. */
 
 import { createTaskbarFlash } from './lib/taskbar-flash.js'
@@ -78,7 +78,7 @@ function makeLog(ctx) {
 }
 
 /**
- * Flash the taskbar when a turn ends or a prompt appears.
+ * Blink the taskbar when a turn ends or a prompt appears.
  *
  * The renderer owns the in-window reminder; this watcher only reaches outside
  * the window. Approval and question listeners delegate to `next()` untouched,

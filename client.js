@@ -46,6 +46,7 @@ window.__ModuleLoader__.load({
       openSessionFor: 'Open session {name}',
       dismissAll: 'Dismiss all',
       dismiss: 'Dismiss reminder',
+      awaitingReply: 'Waiting for your reply',
     }
 
     const zh = {
@@ -67,6 +68,7 @@ window.__ModuleLoader__.load({
       openSessionFor: '打开会话 {name}',
       dismissAll: '全部关闭',
       dismiss: '关闭提醒',
+      awaitingReply: '等待你的回复',
     }
 
     const CSS = `
@@ -498,6 +500,40 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /** Sessions whose last turn ended and whose next turn has not started yet. */
+    function createAwaitingStore() {
+      const ids = new Set()
+      const listeners = new Set()
+      let disposed = false
+      const publish = () => { if (!disposed) for (const listener of [...listeners]) listener() }
+      return {
+        has: (sessionId) => ids.has(sessionId),
+        mark: (sessionId) => {
+          if (ids.has(sessionId)) return
+          ids.add(sessionId)
+          publish()
+        },
+        clear: (sessionId) => {
+          if (!ids.delete(sessionId)) return
+          publish()
+        },
+        clearAll: () => {
+          if (ids.size === 0) return
+          ids.clear()
+          publish()
+        },
+        subscribe: (listener) => {
+          listeners.add(listener)
+          return () => { listeners.delete(listener) }
+        },
+        dispose: () => {
+          disposed = true
+          ids.clear()
+          listeners.clear()
+        },
+      }
+    }
+
     function createReminderCenter(options) {
       const { config, store, t, presence, chime, notifier, sessions, titleMarker, openSession } = options
       const autoTimers = new Map()
@@ -780,7 +816,7 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function watchStatus(ctx, config, center, presence) {
+    function watchStatus(ctx, config, center, presence, awaiting) {
       const statusSource = ctx.uiSession.sessionStatus
       const sessions = ctx.sessions
       const isAway = () => presence.away()
@@ -807,6 +843,20 @@ window.__ModuleLoader__.load({
         const summary = summaryOf(sessionId)
         return summary !== undefined && (summary.retainedBy?.mainView ?? 0) > 0
       }
+      /** Mirror every turn that ended without a new turn or a prompt into the row dot. */
+      const trackAwaiting = (next, before) => {
+        if (!config.notifyOnReply) {
+          awaiting.clearAll()
+          return
+        }
+        for (const [sessionId, entry] of next) {
+          if (entry.running || entry.interaction !== undefined || isChildSession(sessionId)) awaiting.clear(sessionId)
+          else if (before.get(sessionId)?.running === true) awaiting.mark(sessionId)
+        }
+        for (const sessionId of before.keys()) {
+          if (!next.has(sessionId)) awaiting.clear(sessionId)
+        }
+      }
       const reportPrompt = (sessionId, interaction) => {
         center.report({
           kind: promptKind(interaction),
@@ -830,6 +880,7 @@ window.__ModuleLoader__.load({
           center.reconcile(next)
           return
         }
+        trackAwaiting(next, before)
         for (const [sessionId, entry] of next) {
           const prior = before.get(sessionId)
           const freshPrompt = entry.interaction !== undefined
@@ -893,6 +944,28 @@ window.__ModuleLoader__.load({
         item.label === undefined
           ? null
           : h('span', { className: 'dsh-reply-notifier-label' }, item.label))
+    }
+
+    /** Red dot in the session row's trailing seat while that session waits for you. */
+    function AwaitingDot({ sessionId, awaiting, t }) {
+      const waiting = React.useSyncExternalStore(
+        awaiting.subscribe,
+        () => awaiting.has(sessionId),
+        () => awaiting.has(sessionId),
+      )
+      if (!waiting) return null
+      const label = t('awaitingReply')
+      // Inline: the sidebar row is outside the overlay that owns the plugin sheet.
+      return h('span', {
+        className: 'dsh-reply-notifier-row-dot',
+        role: 'img',
+        'aria-label': label,
+        title: label,
+        style: {
+          flex: 'none', width: 7, height: 7, borderRadius: '50%',
+          background: 'var(--dsw-alias-state-error-primary, #e5484d)',
+        },
+      })
     }
 
     function ReminderCard({ item, dismiss, open, t }) {
@@ -985,6 +1058,7 @@ window.__ModuleLoader__.load({
       apply(ctx) {
         const config = readConfig()
         const store = createStore()
+        const awaiting = createAwaitingStore()
         const chime = createChime()
         const notifier = createNotifier()
         const sessions = ctx.sessions
@@ -1015,8 +1089,14 @@ window.__ModuleLoader__.load({
             document.removeEventListener('keydown', unlock, { capture: true })
           }
         }, 'reply-notifier: audio unlock')
-        ctx.effect(() => watchStatus(ctx, config, center, presence), 'reply-notifier: session status')
+        ctx.effect(() => watchStatus(ctx, config, center, presence, awaiting), 'reply-notifier: session status')
         ctx.effect(() => sessions.list.subscribe(() => center.refreshChannels()), 'reply-notifier: viewed session')
+        ctx.effect(() => () => awaiting.dispose(), 'reply-notifier: reply dots')
+
+        ctx.slots.inject('sidebar.session.row.trailing', () => ctx.slots.register({
+          name: 'sidebar.session.row.trailing', id: 'reply-notifier.awaiting', order: 20, locale: NS,
+          inject: () => ({ awaiting }),
+        }, AwaitingDot))
 
         ctx.slots.inject('shell.overlay', () => ctx.slots.register({
           name: 'shell.overlay', id: 'reply-notifier.toast', order: 10, locale: NS,

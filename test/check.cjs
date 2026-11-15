@@ -101,6 +101,7 @@ function boot(options, environment) {
   let status = new Map()
   let dictionary = {}
   let registration
+  const registrations = new Map()
   let focusedCalls = 0
   let permissionRequests = 0
   const doc = createEventTarget()
@@ -200,7 +201,8 @@ function boot(options, environment) {
     slots: {
       inject: (_name, callback) => { callback(); return () => {} },
       register: (config, component) => {
-        registration = { config, component }
+        registrations.set(config.name, { config, component })
+        if (config.name === 'shell.overlay') registration = { config, component }
         return () => {}
       },
     },
@@ -242,6 +244,11 @@ function boot(options, environment) {
     for (const listener of listListeners) listener()
     await settle()
   }
+  const rowSeat = (sessionId) => {
+    const seat = registrations.get('sidebar.session.row.trailing')
+    if (seat === undefined) return undefined
+    return seat.component({ sessionId, ...seat.config.inject(), t: dictionaryT })
+  }
   return {
     env,
     notifications,
@@ -262,6 +269,9 @@ function boot(options, environment) {
     setDocumentTitle: (title) => { globalThis.document.title = title },
     component: registration.component,
     render: () => registration.component({ ...injected, t: dictionaryT }),
+    rowSeat,
+    dot: (sessionId) => hasClass(rowSeat(sessionId), 'dsh-reply-notifier-row-dot'),
+    dotLabel: (sessionId) => attributeOf(rowSeat(sessionId), 'dsh-reply-notifier-row-dot', 'aria-label'),
     advance: async (ms) => { advanceClock(ms); await settle() },
     activity: async (target) => { doc.dispatch('pointerdown', target === undefined ? {} : { target }); await settle() },
     focus: async (value = true) => { env.focused = value; win.dispatch(value ? 'focus' : 'blur'); await settle() },
@@ -310,6 +320,16 @@ function countClass(node, className) {
     if (typeof classes === 'string' && classes.split(/\s+/).includes(className)) count += 1
   })
   return count
+}
+
+function attributeOf(node, className, name) {
+  let found
+  walkTree(node, (element) => {
+    const classes = element.props?.className
+    if (typeof classes !== 'string' || !classes.split(/\s+/).includes(className)) return
+    found = element.props?.[name]
+  })
+  return found
 }
 
 function textOf(node) {
@@ -432,6 +452,60 @@ async function urgency() {
   check('a prompt in another session alerts', app.notifications.length, 4)
   check('the alert names the other session', app.notifications[3].body, 'Tool bash is waiting for your approval. · Session two')
   app.dispose()
+}
+
+async function awaitingDots() {
+  const app = boot({})
+  app.summaries.s1 = { displayTitle: 'Session one', retainedBy: { mainView: 1 } }
+  app.summaries.s2 = { displayTitle: 'Session two', retainedBy: {} }
+  await app.publish({ s1: idle, s2: idle })
+  check('an idle session shows no reply dot', [app.dot('s1'), app.dot('s2')], [false, false])
+
+  await app.publish({ s1: running, s2: running })
+  check('a running session shows no reply dot', [app.dot('s1'), app.dot('s2')], [false, false])
+
+  await app.publish({ s1: stopped, s2: stopped })
+  check('a finished turn dots the open session too', [app.dot('s1'), app.dot('s2')], [true, true])
+  check('the dot is labelled for screen readers', app.dotLabel('s1'), 'Waiting for your reply')
+
+  await app.publish({ s1: running, s2: stopped })
+  check('the next turn clears that row dot', [app.dot('s1'), app.dot('s2')], [false, true])
+
+  await app.publish({ s1: running, s2: approval('b1', 'bash') })
+  check('a waiting prompt clears the reply dot', app.dot('s2'), false)
+
+  await app.publish({ s1: running, s2: running })
+  await app.publish({ s1: running, s2: stopped })
+  check('the dot returns once the prompt is answered', app.dot('s2'), true)
+
+  await app.publish({})
+  check('a session that leaves the list loses its dot', [app.dot('s1'), app.dot('s2')], [false, false])
+  app.dispose()
+
+  const replyOff = boot({ notifyOnReply: false })
+  await replyOff.publish({ s1: idle })
+  await replyOff.publish({ s1: running })
+  await replyOff.publish({ s1: stopped })
+  check('notifyOnReply false leaves the row dot off', replyOff.dot('s1'), false)
+  replyOff.dispose()
+
+  const away = boot({})
+  away.summaries.s1 = { displayTitle: 'Session one', retainedBy: {} }
+  await away.publish({ s1: idle })
+  await away.publish({ s1: running })
+  away.env.focused = false
+  await away.focus(false)
+  await away.publish({ s1: stopped })
+  check('an away reply dots its row', away.dot('s1'), true)
+  away.dispose()
+
+  const child = boot({})
+  child.summaries.s1 = { displayTitle: 'Parent', retainedBy: { mainView: 1 } }
+  child.summaries.sub = { displayTitle: 'Child', origin: 'subagent' }
+  await child.publish({ s1: running, sub: running })
+  await child.publish({ s1: running, sub: stopped })
+  check('a subagent stop leaves no row dot', child.dot('sub'), false)
+  child.dispose()
 }
 
 async function children() {
@@ -919,15 +993,16 @@ async function taskbarFlash() {
   check('the flash script names the process it starts from', script.includes('$cursor = 4242'), true)
   check('the flash script pulses the window', script.includes('FlashWindowEx') && script.includes('dwFlags = [uint32]3'), true)
   check('one pulse per interval', script.includes('uCount = [uint32]1'), true)
-  check('the pulse burst has a deadline', script.includes('6000'), true)
-  check('the flash script starts only for an urgent title', script.includes('GetWindowTextW') && script.includes('🔴'), true)
-  check('the flash script skips a window that already has the focus', script.includes('GetForegroundWindow'), true)
+  check('the burst blinks a few times', script.includes('$pulse -lt 6'), true)
+  check('a window in front blinks too', [script.includes('$startedInFront'), script.includes('$marked = $false'), script.includes('🔴')], [true, false, false])
   check('the flash stops the pulse and leaves the solid highlight', script.includes('dwFlags = [uint32]0') && script.includes('uCount = [uint32]0'), true)
   check('the flash script stops when the window is gone', script.includes('IsWindow'), true)
   check('the flash script never falls through to the desktop', script.includes("'explorer'") && script.includes('break'), true)
-  const args = powerShellArguments(4242)
+  const marked = flashScript(4242, { requireMarker: true })
+  check('onlyWhenAway waits for the urgent title', marked.includes('GetWindowTextW') && marked.includes('🔴'), true)
+  const args = powerShellArguments(4242, { requireMarker: true })
   check('the flash payload is one encoded command', args.at(-2), '-EncodedCommand')
-  check('the flash payload round-trips', Buffer.from(args.at(-1), 'base64').toString('utf16le'), script)
+  check('the flash payload round-trips', Buffer.from(args.at(-1), 'base64').toString('utf16le'), marked)
 
   const launches = []
   const children = []
@@ -985,6 +1060,12 @@ async function taskbarFlash() {
 
   const broken = build({ spawn: () => { throw new Error('spawn refused') } })
   check('a refused helper is reported as no flash', broken.flash('reply'), false)
+
+  const awayOnly = build({ options: { flashTaskbar: true, onlyWhenAway: true } })
+  check('onlyWhenAway still asks for a flash', awayOnly.flash('reply'), true)
+  const awayPayload = Buffer.from(launches.at(-1).argv.at(-1), 'base64').toString('utf16le')
+  check('onlyWhenAway sends the title marker gate', awayPayload.includes('🔴'), true)
+  awayOnly.dispose()
 }
 
 async function x11Attention() {
@@ -1115,6 +1196,7 @@ async function main() {
   await combinedSnapshot()
   await toneThrottle()
   await urgency()
+  await awaitingDots()
   await children()
   await archive()
   await toggles()

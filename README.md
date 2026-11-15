@@ -47,16 +47,22 @@ working or drops the overlay entry without disturbing the rest of the UI.
   the taskbar and alt-tab entry carry a red count. The notification stays on screen
   until clicked where the operating system supports it, and clicking it focuses
   the window and opens the session.
+- **The session list marks the session that waits for you**: after a turn ends, a
+  red dot sits in that session's row until the session runs again or a prompt
+  takes over — the open session is marked too, so the row tells you which
+  session is yours to answer. A waiting permission, plan review, or question
+  keeps the harness's own status dot and adds no red dot, and `notifyOnReply:
+  false` turns the red dot off.
 - **Outside the window**, in DeepSeek Harness Desktop, the taskbar entry is
-  flagged while an urgent reminder waits — the client's red title marker is the
-  gate, so a quiet reminder never flashes. On Windows the taskbar pulses for up
-  to 6 seconds behind the window and then keeps Windows' solid orange
-  highlight until you activate the window; clicking stops the pulse at once.
-  The pulse never starts while the window already has focus. The X11 urgency
-  hint is used on Linux. It needs no change to the Desktop shell and is skipped
-  when `flashTaskbar` is off.
+  flagged when a turn ends or a prompt waits — in front or behind: the button
+  blinks a few times and then keeps Windows' solid orange highlight until you
+  activate the window. Behind, the blink stops early as soon as the window comes
+  forward. The X11 urgency hint is used on Linux. It needs no change to the
+  Desktop shell and is skipped when `flashTaskbar` is off; with `onlyWhenAway`
+  on, only a reminder the client counted as urgent flashes.
 - A reminder clears itself when its prompt is answered, a new turn starts in
-  its session, or the session leaves the list.
+  its session, or the session leaves the list; the row dot follows the same
+  rules.
 
 ## Options
 
@@ -91,8 +97,8 @@ the keys you want to keep:
 | `systemNotification` | `true` | Raise an operating-system notification. |
 | `toast` | `true` | Show the in-window cards. |
 | `sound` | `true` | Play the plugin chime and keep system notifications silent; turn it off to silence both. |
-| `flashTaskbar` | `true` | Pulse the taskbar while an urgent reminder waits; the 6s pulse then leaves Windows' solid orange highlight until activation, and a click stops it (the X11 urgency hint on Linux renders only behind). |
-| `onlyWhenAway` | `false` | Show no reply reminder while you are at the window; prompts still reach you. |
+| `flashTaskbar` | `true` | Blink the taskbar entry when a turn ends or a prompt waits, in front or behind; the few blinks leave Windows' solid orange highlight until activation (the X11 urgency hint on Linux renders only behind). |
+| `onlyWhenAway` | `false` | Show no reply reminder while you are at the window; prompts still reach you, and the taskbar blink now waits for the client's urgent marker. |
 | `alertWhileViewing` | `false` | Chime and notify even while you watch the session. |
 | `dismissOnReturn` | `true` | Clear every reminder as soon as you come back to the window or press anything in it; `false` keeps the older timings. |
 | `requireInteraction` | `true` | Keep the system notification until it is clicked or dismissed. |
@@ -125,19 +131,19 @@ Numeric values are clamped to sane ranges: `toastSeconds` and `idleSeconds` to
   blocks notifications still shows the card and plays the chime. If the
   operating system itself hides notifications (for example Windows
   notifications are turned off), the native toast cannot appear; the chime, the
-  window title marker, and the taskbar flash still signal the reminder.
+  window title marker, the row dot, and the taskbar flash still signal the
+  reminder.
 - The taskbar flag is the host half's one out-of-window channel, and both
   platforms go through a helper process: Windows starts a hidden
   `powershell.exe` that calls `FlashWindowEx` on the window of the Electron
   process that owns the harness, and Linux runs `wmctrl` to add
-  `_NET_WM_STATE_DEMANDS_ATTENTION` to that window. The Windows helper pulses
-  for six seconds, sends `FLASHW_STOP`, and leaves the taskbar button
-  highlighted until activation; it starts only when the window title carries
-  the red urgent count, and never while the window already has focus. Nothing
-  is installed, downloaded, or sent over the network. A browser tab has no
-  window to flag, Wayland sessions have no portable urgency hint, and a
-  machine that blocks the helper keeps the chime, the title marker, and the
-  notification.
+  `_NET_WM_STATE_DEMANDS_ATTENTION` to that window. The Windows helper blinks
+  six times (600 ms apart), sends `FLASHW_STOP`, and leaves the taskbar button
+  highlighted until activation; only `onlyWhenAway` makes it wait for the red
+  urgent title count. Nothing is installed, downloaded, or sent over the
+  network. A browser tab has no window to flag, Wayland sessions have no
+  portable urgency hint, and a machine that blocks the helper keeps the chime,
+  the title marker, the row dot, and the notification.
 - A browser or desktop shell may throttle timers in a hidden or minimized
   window, so repeats can arrive later than `repeatSeconds`.
 - No sound or notification is stored, sent, or logged anywhere; the bundle makes
@@ -153,15 +159,15 @@ runs the browser half against stub services on a fake clock and asserts 200+
 transitions: reply completion, prompt arrival and replacement, urgency and idle
 detection, dismissal the moment you come back, sticky and escalating cards, the
 repeat burst and its slow tail, notification clicks, session opening, prompt and
-reply reconciliation, the taskbar flag gated by the urgent title and every
-option for both Windows and X11, and the host's option normalisation. No
-browser is needed.
+reply reconciliation, the red reply dot on the session row, the taskbar blink on
+every turn with the `onlyWhenAway` marker gate, and every option for both
+Windows and X11, plus the host's option normalisation. No browser is needed.
 
 | Path | Role |
 |---|---|
-| `index.js` | Host half: publishes the options into the page bootstrap and watches turns and prompts for the taskbar flash. |
+| `index.js` | Host half: publishes the options into the page bootstrap and watches turns and prompts for the taskbar blink. |
 | `lib/taskbar-flash.js` | Host half: builds the PowerShell payload and the `wmctrl` calls that flag the window. |
-| `client.js` | Client half: watches `uiSession.sessionStatus`, renders the cards, raises the chime and the notification. |
+| `client.js` | Client half: watches `uiSession.sessionStatus`, renders the cards and the red reply dot, raises the chime and the notification. |
 | `cordis.patch.yml` | The loader row the bundle inserts, with the default options. |
 | `locale/en.json`, `locale/zh.json` | Plugin title, description, and the detail page. |
 | `docs/DETAIL.md` | The image-only detail page shown in Plugin Manager. |
