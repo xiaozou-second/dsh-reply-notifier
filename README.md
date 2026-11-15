@@ -1,6 +1,6 @@
 # Reply notifier
 
-A DeepSeek Harness bundle that reminds you when an agent reply finishes, and
+A DeepSeek Harness bundle that pulls you back when an agent reply finishes, and
 when a permission prompt, plan review, or question waits for your input.
 
 It only reads session status: it never answers a prompt, never touches the
@@ -19,22 +19,42 @@ The bundle installs its own row and works with no further configuration. Turn
 it off with the plugin switch, or uninstall it from the same page.
 
 Built and tested with DeepSeek Harness `0.2.2-rc.3`. The bundle only consumes
-published client services (`sessions`, `uiSession`, `slots`, `locale`) and the
-`shell.overlay` slot, so a later Harness release either keeps working or drops
-the overlay entry without disturbing the rest of the UI.
+published client services (`sessions`, `uiSession`, `uiWorkspace`, `slots`,
+`locale`) and the `shell.overlay` slot, so a later Harness release either keeps
+working or drops the overlay entry without disturbing the rest of the UI.
 
 ## What you see
 
-- Every reminder is a card in the frame-wide overlay, bottom right. It names the
-  session, holds open while you hover or focus it, and otherwise disappears
-  after six seconds; its close button dismisses it immediately.
-- A short tone and an operating-system notification are added only while you are
-  away: the window is hidden or minimized, another application has focus, the
-  session is not the one on screen, or the host already recorded the stop as
-  unread. While you watch the session that finished, the card is the whole
-  reminder.
-- Set `alertWhileViewing: true` to sound the tone and raise the notification
-  even while you watch.
+- **Urgent reminders** are the ones you have to be told about: the window is
+  hidden or unfocused, the session is not the one on screen, the host recorded
+  the stop as unread, or you have not touched the app for `idleSeconds`. While
+  you are away they take the top seat, in the middle, with a pulsing accent and
+  a bell (a check for a finished reply), a count, **Dismiss all**, an **Open
+  session** button, and they render above fullscreen panels and the sidebar
+  drawer. They stay while you are away and clear the moment you come back to the
+  window — a click, an alt-tab, or any input. While you are at the window they
+  never take the top seat: they join the corner stack, and your next click or
+  keystroke clears them.
+- **Ambient reminders** appear as a card in the bottom-right corner while you
+  watch the session that finished. They clear after `toastSeconds` once you
+  keep interacting with the app; hovering or focusing the card holds it.
+- **Away from the keyboard**, urgent reminders repeat a louder three-strike
+  chime and a persistent operating-system notification every `repeatSeconds`
+  for `repeatLimit` times, then keep returning at a slower interval (six times
+  `repeatSeconds`, at least one minute) until you come back or dismiss them.
+  The window title is prefixed with `🔴 N ·` while urgent reminders wait, so
+  the taskbar and alt-tab entry carry a red count. The notification stays on screen
+  until clicked where the operating system supports it, and clicking it focuses
+  the window and opens the session.
+- **Outside the window**, in DeepSeek Harness Desktop, the taskbar entry is
+  flagged when a turn ends or a prompt appears and the window is not in front,
+  and stays flagged until you bring it forward: the taskbar button flashes on
+  Windows, the dock borrows the X11 urgency hint on Linux. This works with
+  Windows notifications turned off, is skipped while you are looking at the
+  window, and needs no change to the Desktop shell. Turn it off with
+  `flashTaskbar`.
+- A reminder clears itself when its prompt is answered, a new turn starts in
+  its session, or the session leaves the list.
 
 ## Options
 
@@ -50,9 +70,16 @@ the keys you want to keep:
     notifyOnPrompt: true
     systemNotification: true
     toast: true
-    sound: false
-    onlyWhenAway: true
+    sound: true
+    flashTaskbar: true
+    onlyWhenAway: false
     alertWhileViewing: false
+    dismissOnReturn: true
+    requireInteraction: true
+    toastSeconds: 20
+    idleSeconds: 90
+    repeatSeconds: 20
+    repeatLimit: 12
 ```
 
 | Key | Default | Meaning |
@@ -60,23 +87,53 @@ the keys you want to keep:
 | `notifyOnReply` | `true` | Remind when a session stops running. |
 | `notifyOnPrompt` | `true` | Remind when an approval, plan review, or question appears. |
 | `systemNotification` | `true` | Raise an operating-system notification. |
-| `toast` | `true` | Show the in-window card. |
-| `sound` | `true` | Play a short tone; when it plays, the system notification stays silent. |
+| `toast` | `true` | Show the in-window cards. |
+| `sound` | `true` | Play the plugin chime and keep system notifications silent; turn it off to silence both. |
+| `flashTaskbar` | `true` | Flag the taskbar entry while the window is not in front: a taskbar flash on Windows, the X11 urgency hint on Linux (needs `wmctrl`). |
 | `onlyWhenAway` | `false` | Show no reply reminder while you are at the window; prompts still reach you. |
-| `alertWhileViewing` | `false` | Tone and notification even while you watch the session. |
+| `alertWhileViewing` | `false` | Chime and notify even while you watch the session. |
+| `dismissOnReturn` | `true` | Coming back to the window clears every reminder, and a click or keystroke clears the urgent ones; `false` keeps the older timings. |
+| `requireInteraction` | `true` | Keep the system notification until it is clicked or dismissed. |
+| `toastSeconds` | `20` | Seconds a card stays after your next input once you are present; `0` keeps every card until dismissed. |
+| `idleSeconds` | `90` | Seconds without keyboard, pointer, wheel, or mouse input before you count as away; `0` disables idle detection. |
+| `repeatSeconds` | `20` | Seconds between repeated chimes while away; `0` disables repeats. |
+| `repeatLimit` | `12` | Rapid repeats before the slower tail; `0` disables repeats. |
+
+Numeric values are clamped to sane ranges: `toastSeconds` and `idleSeconds` to
+`0..3600`, `repeatSeconds` to `0..600`, and `repeatLimit` to `0..100`.
 
 ## Limits
 
 - Reminders describe the session, not its content: no message text is read or
   copied into a reminder.
+- At most 32 reminders are tracked; the urgent stack lists every one of them in
+  a scrollable column (newest first), the ambient stack shows the newest three,
+  and the header counts all urgent reminders. All operating-system
+  notifications close when you return to the window; the cards stay.
 - The first status snapshot at page load primes the watch, so a reply finishing
   before the page connects raises no reminder; a prompt still pending when the
   page loads does raise one.
 - A subagent session's stop raises no reminder, because its parent keeps
   running; a prompt that a subagent waits for does raise one.
-- The operating-system notification needs the page to be allowed to use
-  notifications. A browser tab that blocks them still shows the card and plays
-  the tone.
+- The chime needs one pointer or keyboard event in the page after load to unlock
+  the browser's audio device. Before that, the system notification carries the
+  alert; after it, the chime also works while the window is unattended.
+- The page must be allowed to use notifications; in a browser the plugin asks
+  for that permission on your first pointer or keyboard event. A page that
+  blocks notifications still shows the card and plays the chime. If the
+  operating system itself hides notifications (for example Windows
+  notifications are turned off), the native toast cannot appear; the chime, the
+  window title marker, and the taskbar flash still signal the reminder.
+- The taskbar flag is the host half's one out-of-window channel, and both
+  platforms go through a helper process: Windows starts a hidden
+  `powershell.exe` that calls `FlashWindowEx` on the window of the Electron
+  process that owns the harness, and Linux runs `wmctrl` to add
+  `_NET_WM_STATE_DEMANDS_ATTENTION` to that window. Nothing is installed,
+  downloaded, or sent. A browser tab has no window to flag, Wayland sessions
+  have no portable urgency hint, and a machine that blocks the helper keeps the
+  chime, the title marker, and the notification.
+- A browser or desktop shell may throttle timers in a hidden or minimized
+  window, so repeats can arrive later than `repeatSeconds`.
 - No sound or notification is stored, sent, or logged anywhere; the bundle makes
   no network requests.
 
@@ -86,14 +143,18 @@ the keys you want to keep:
 npm test
 ```
 
-runs the browser half against stub services and asserts 40+ transitions: reply
-completion, prompt arrival and replacement, the urgency rules, session labels,
-subagent filtering, and every option. No browser is needed.
+runs the browser half against stub services on a fake clock and asserts 200+
+transitions: reply completion, prompt arrival and replacement, urgency and idle
+detection, dismissal the moment you come back, sticky and escalating cards, the
+repeat burst and its slow tail, notification clicks, session opening, prompt and
+reply reconciliation, the taskbar flag on every turn ending and every option for
+both Windows and X11, and the host's option normalisation. No browser is needed.
 
 | Path | Role |
 |---|---|
-| `index.js` | Host half: publishes the options into the page bootstrap. |
-| `client.js` | Client half: watches `uiSession.sessionStatus`, renders the card, raises the tone and the notification. |
+| `index.js` | Host half: publishes the options into the page bootstrap and watches turns and prompts for the taskbar flash. |
+| `lib/taskbar-flash.js` | Host half: builds the PowerShell payload and the `wmctrl` calls that flag the window. |
+| `client.js` | Client half: watches `uiSession.sessionStatus`, renders the cards, raises the chime and the notification. |
 | `cordis.patch.yml` | The loader row the bundle inserts, with the default options. |
 | `locale/en.json`, `locale/zh.json` | Plugin title, description, and the detail page. |
 | `docs/DETAIL.md` | The image-only detail page shown in Plugin Manager. |

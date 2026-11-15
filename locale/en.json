@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Reply notifier",
-    "description": "When an agent reply finishes, or a permission prompt, plan review, or question waits for your input, a card appears in the window corner naming the session. A short tone and an operating-system notification, when the page is allowed to use them, are added only while you are away from that session; set alertWhileViewing to always add them. Reading status only: it never answers a prompt. Options live on the reply-notifier row in the profile's cordis.patch.yml; the plugin switch turns every reminder off.",
+    "description": "When an agent reply finishes, or a permission prompt, plan review, or question waits for your input, a reminder names the session and can open it. While you watch it is a corner card; when you are away (hidden, unfocused, or idle) it is a top alert with a persistent system notification and a repeating chime. Coming back to the window clears it, and while the window is in front a click or keystroke clears the urgent ones — the top seat is never used there. In DeepSeek Harness Desktop the window also flags its taskbar entry while it is not in front (a taskbar flash on Windows, the urgency hint on Linux X11), even with notifications turned off. Reading status only: it never answers a prompt. Options live on the reply-notifier row in the profile's cordis.patch.yml; the plugin switch turns every reminder off.",
     "detail": "docs/DETAIL.md"
   }
 }

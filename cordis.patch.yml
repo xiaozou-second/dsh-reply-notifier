@@ -7,5 +7,12 @@
         systemNotification: true
         toast: true
         sound: true
+        flashTaskbar: true
         onlyWhenAway: false
         alertWhileViewing: false
+        dismissOnReturn: true
+        requireInteraction: true
+        toastSeconds: 20
+        idleSeconds: 90
+        repeatSeconds: 20
+        repeatLimit: 12
