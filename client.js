@@ -182,7 +182,7 @@ window.__ModuleLoader__.load({
       toastSeconds: 20,
       idleSeconds: 90,
       repeatSeconds: 20,
-      repeatLimit: 2,
+      repeatLimit: 0,
     }
 
     function readConfig() {

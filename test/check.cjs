@@ -717,6 +717,18 @@ async function repeatAlerts() {
   check('returning closes the reminder notification', app.notifications[0].closed, true)
   check('returning closes the repeat notification', app.notifications[2].closed, true)
   app.dispose()
+
+  const once = boot({})
+  once.summaries.s1 = { displayTitle: 'Session one', retainedBy: { mainView: 1 } }
+  await once.publish({ s1: idle })
+  await once.publish({ s1: running })
+  once.env.hidden = true
+  await once.visibility(true)
+  await once.publish({ s1: stopped })
+  check('the default rings one three-strike chime', once.tones(), 1)
+  await once.advance(120000)
+  check('the default stays silent after that chime', [once.tones(), once.notifications.length], [1, 1])
+  once.dispose()
 }
 
 async function idleAndEscalation() {
@@ -978,7 +990,7 @@ async function hostOptions() {
     toastSeconds: 20,
     idleSeconds: 90,
     repeatSeconds: 20,
-    repeatLimit: 2,
+    repeatLimit: 0,
   }
   const inject = (config) => {
     const table = []

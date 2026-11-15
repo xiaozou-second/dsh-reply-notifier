@@ -39,14 +39,14 @@ working or drops the overlay entry without disturbing the rest of the UI.
   watch the session that finished. Left alone they clear after `toastSeconds`;
   hovering or focusing the card holds that timer, and any click or keystroke in
   the window clears every reminder on screen at once.
-- **Away from the keyboard**, urgent reminders repeat a louder three-strike
-  chime and a persistent operating-system notification every `repeatSeconds`
-  for `repeatLimit` times; after that the sound stops and the cards and the
-  last notification stay until you come back or dismiss them. The window title
-  is prefixed with `🔴 N ·` while urgent reminders wait, so the taskbar and
-  alt-tab entry carry a red count. The notification stays on screen until
-  clicked where the operating system supports it, and clicking it focuses the
-  window and opens the session.
+- **Away from the keyboard**, an urgent reminder plays one three-strike chime
+  and raises a persistent operating-system notification. `repeatSeconds` and
+  `repeatLimit` can add a few repeats; both default to no repeats, so the chime
+  rings once and the cards and the notification stay until you come back or
+  dismiss them. The window title is prefixed with `🔴 N ·` while urgent
+  reminders wait, so the taskbar and alt-tab entry carry a red count. The
+  notification stays on screen until clicked where the operating system
+  supports it, and clicking it focuses the window and opens the session.
 - **The session list marks the session that waits for you**: after a turn ends, a
   red dot sits in that session's row until you open it, click in it, start its
   next turn, or a prompt takes over — the open session is marked too, so the row
@@ -87,7 +87,7 @@ the keys you want to keep:
     toastSeconds: 20
     idleSeconds: 90
     repeatSeconds: 20
-    repeatLimit: 2
+    repeatLimit: 0
 ```
 
 | Key | Default | Meaning |
@@ -105,7 +105,7 @@ the keys you want to keep:
 | `toastSeconds` | `20` | Seconds a card stays after your next input once you are present; `0` keeps every card until dismissed. |
 | `idleSeconds` | `90` | Seconds without keyboard, pointer, wheel, or mouse input before you count as away; `0` disables idle detection. |
 | `repeatSeconds` | `20` | Seconds between repeated chimes while away; `0` disables repeats. |
-| `repeatLimit` | `2` | How many times the chime repeats after the first alert, then it goes quiet; `0` disables repeats. |
+| `repeatLimit` | `0` | Extra chimes after the first three-strike alert, then silence; `0` keeps only that first chime. |
 
 Numeric values are clamped to sane ranges: `toastSeconds` and `idleSeconds` to
 `0..3600`, `repeatSeconds` to `0..600`, and `repeatLimit` to `0..100`.

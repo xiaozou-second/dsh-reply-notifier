@@ -150,7 +150,7 @@ notifications; it also makes the repeat reminders visible.
 ## Current state (handoff)
 
 - `public/client.js` (1131 lines): sticky urgent alerts portaled above panels;
-  3-round chime; 2 repeats then silence; `🔴 N ·` title marker; audio
+  3-strike chime once (repeats off by default); `🔴 N ·` title marker; audio
   unlock; native notification with click-to-open; prompt/reply reconciliation;
   every reminder cleared by the next click back into the window; a red reply dot
   in ui-workspace's `sidebar.session.row.trailing` seat while a session waits
